@@ -3,6 +3,7 @@
 #include "SipMessageTypes.h"
 #include "SipSdpMessage.hpp"
 #include "IDGen.hpp"
+#include "Log.hpp"
 
 RequestsHandler::RequestsHandler(std::string serverIp, int serverPort,
 	OnHandledEvent onHandledEvent) :
@@ -53,6 +54,7 @@ void RequestsHandler::OnRegister(std::shared_ptr<SipMessage> data)
 	{
 		auto newClient = std::make_shared<SipClient>(data->getFromNumber(), data->getSource());
 		registerClient(std::move(newClient));
+		Log::Protocol(data);
 	}
 
 	auto response = data;
@@ -61,7 +63,7 @@ void RequestsHandler::OnRegister(std::shared_ptr<SipMessage> data)
 	response->setTo(data->getTo() + ";tag=" + IDGen::GenerateID(9));
 	response->setContact("Contact: <sip:" + data->getFromNumber() + "@" + _serverIp + ":" + std::to_string(_serverPort) + ";transport=UDP>");
 	endHandle(response->getFromNumber(), response);
-
+	Log::Protocol(response);
 	if (isUnregisterReq)
 	{
 		auto newClient = std::make_shared<SipClient>(data->getFromNumber(), data->getSource());
@@ -73,6 +75,8 @@ void RequestsHandler::OnCancel(std::shared_ptr<SipMessage> data)
 {
 	setCallState(data->getCallID(), Session::State::Cancel);
 	endHandle(data->getToNumber(), data);
+	Log::Protocol(data);
+
 }
 
 void RequestsHandler::onReqTerminated(std::shared_ptr<SipMessage> data)
@@ -82,10 +86,12 @@ void RequestsHandler::onReqTerminated(std::shared_ptr<SipMessage> data)
 
 void RequestsHandler::OnInvite(std::shared_ptr<SipMessage> data)
 {
+	Log::Protocol(data);
 	// Check if the caller is registered
 	auto caller = findClient(data->getFromNumber());
 	if (!caller.has_value())
 	{
+		Log::Message("Unable to process INVITE request. Calling client is not registered on serrver.");
 		return;
 	}
 
@@ -113,15 +119,18 @@ void RequestsHandler::OnInvite(std::shared_ptr<SipMessage> data)
 	auto response = data;
 	response->setContact("Contact: <sip:" + caller.value()->getNumber() + "@" + _serverIp + ":" + std::to_string(_serverPort) + ";transport=UDP>");
 	endHandle(data->getToNumber(), response);
+	Log::Protocol(response);
 }
 
 void RequestsHandler::OnTrying(std::shared_ptr<SipMessage> data)
 {
+	Log::Protocol(data);
 	endHandle(data->getFromNumber(), data);
 }
 
 void RequestsHandler::OnRinging(std::shared_ptr<SipMessage> data)
 {
+	Log::Protocol(data);
 	endHandle(data->getFromNumber(), data);
 }
 
