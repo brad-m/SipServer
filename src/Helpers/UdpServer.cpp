@@ -3,6 +3,7 @@
 #include <vector>
 #include <thread>
 #include <cstring>
+#include <algorithm>
 
 UdpServer::UdpServer(std::string ip, int port, OnNewMessageEvent event) : _ip(std::move(ip)), _port(port), _onNewMessageEvent(event), _keepRunning(false)
 {
@@ -43,21 +44,30 @@ void UdpServer::startReceive()
 	_keepRunning = true;
 	_receiverThread = std::thread([=]()
 		{
-			char buffer[BUFFER_SIZE];
+			char  buffer[BUFFER_SIZE];
+			std::string message;
 			sockaddr_in senderEndPoint;
 			std::memset(&senderEndPoint, 0, sizeof(senderEndPoint));
 			int len = sizeof(senderEndPoint);
 
 			while (_keepRunning)
 			{
+				unsigned int receivedBytes;
 				std::memset(&senderEndPoint, 0, sizeof(senderEndPoint));
 #ifdef __linux__
-				recvfrom(_sockfd, buffer, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&senderEndPoint), (socklen_t*)&len);
+				receivedBytes = recvfrom(_sockfd, buffer, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&senderEndPoint), (socklen_t*)&len);
 #elif defined _WIN32 || defined _WIN64
-				recvfrom(_sockfd, buffer, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&senderEndPoint), &len);
+				receivedBytes =recvfrom(_sockfd, buffer, BUFFER_SIZE, 0, reinterpret_cast<struct sockaddr*>(&senderEndPoint), &len);
+				if (receivedBytes == SOCKET_ERROR)
+					continue;
+
+				if (receivedBytes <= BUFFER_SIZE)
+				{
+					message = std::string(buffer, receivedBytes);
+				}
 #endif
 				if (!_keepRunning) return;
-				_onNewMessageEvent(std::move(buffer), senderEndPoint);
+				_onNewMessageEvent(std::move(message), senderEndPoint);
 			}
 		});
 }

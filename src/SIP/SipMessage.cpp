@@ -214,7 +214,6 @@ std::string SipMessage::getContentLength() const
 {
 	return _contentLength;
 }
-
 std::string SipMessage::extractNumber(std::string header) const
 {
 	auto indexOfNumber = header.find("sip:") + 4;

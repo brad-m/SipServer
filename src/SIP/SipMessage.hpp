@@ -39,7 +39,7 @@ public:
 	std::string getContactNumber() const;
 	std::string getContentLength() const;
 	sockaddr_in getSource() const;
-
+	unsigned int getContentLengthValue() const;
 	std::string toString() const;
 
 protected:
